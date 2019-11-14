@@ -1,0 +1,164 @@
+#!/bin/bash
+
+
+if [[ ! -d doMe_uncompleted ]]; then
+mkdir doMe_uncompleted
+chmod 700 doMe_uncompleted
+fi
+
+if [[ ! -d doMe_completed ]]; then
+mkdir doMe_completed 
+chmod 700 doMe_completed 
+fi
+
+
+help() {
+echo -e "
+Help is here when you need it!
+List of commands:
+
+./doMe help
+Shows this help screen.
+---------------------------------------------------
+./doMe list
+Shows a list of uncompleted items.
+---------------------------------------------------
+./doMe complete [number]
+Marks the given number item as completed.
+---------------------------------------------------
+./doMe list completed
+Shows a list of completed items.
+---------------------------------------------------
+./doMe add [title]
+Adds a new item with the given title.
+Additional text can be sent to stdin like this:
+echo "aditional text.." | ./doMe add "title.."
+---------------------------------------------------
+"
+}
+
+list() {
+last=0
+for file in $(ls $1); do
+echo "$file)" $(head -n 1 $1/"$file")
+last="$file"
+done
+
+if [[ $last -eq 0 ]]; then
+echo -e "\nYou don't have any items\n"
+else
+
+if [[ $2 != "mark" ]]; then
+echo -e "\nEnter an item number to see more information on the item: "
+read itemNum
+if [[ ! -f $1/"$itemNum" ]]; then
+echo "That item number doesn't exist"
+else
+echo -e ""
+cat $1/"$itemNum"
+fi
+else
+read -p $'\nEnter item number to mark complete: ' markNum
+complete $markNum
+fi
+fi
+}
+
+complete() {
+
+if [[ ! -f doMe_uncompleted/"$1" ]]; then
+echo -e "\nThat item number doesn't exist"
+
+else
+num=0
+for file in $(ls doMe_completed); do
+num=file
+done
+
+mv doMe_uncompleted/"$1" doMe_completed/$(($num + 1))
+
+for file in $(ls doMe_uncompleted); do
+if [[ $file -gt $1 ]]; then
+mv doMe_uncompleted/"$file" doMe_uncompleted/$(($file - 1))
+fi
+done
+echo -e "\nItem marked complete successfully!"
+
+fi
+}
+
+add() {
+num=0
+for file in $(ls doMe_uncompleted); do
+num=file
+done
+
+num=$((num + 1))
+additionalText="$2"
+
+if test ! -t 0; then
+additionalText=$(</dev/stdin)
+fi
+echo -e "$1\n-------\n$additionalText" > doMe_uncompleted/"$num"
+chmod 600 doMe_uncompleted/"$num"
+
+echo -e "\nAdded item successfully!"
+
+}
+
+menu() {
+echo -e "\nWelcome to doMe where stuff gets done!\n
+How can I help you?"
+
+while : ; do
+echo -e "
+A) See current items
+B) Add new item
+C) Mark item as completed
+D) See completed items
+
+Q) Quit\n"
+
+read -p 'Enter a choice: ' choice
+if [[ $choice = 'a' ]] || [[ $choice = 'A' ]]; then
+echo -e ""
+list doMe_uncompleted
+elif [[ $choice = 'b' ]] || [[ $choice = 'B' ]]; then
+read -p $'\nEnter a title for the item: ' title
+read -p $'\nEnter additional text for the item: ' additionalText
+add "$title" "$additionalText"
+elif [[ $choice = 'c' ]] || [[ $choice = 'C' ]]; then
+list doMe_uncompleted mark
+elif [[ $choice = 'd' ]] || [[ $choice = 'D' ]]; then
+list doMe_completed
+elif [[ $choice = 'q' ]] || [[ $choice = 'Q' ]]; then
+break
+else
+echo -e "\nPlease enter a valid choice.\n"
+fi
+done
+}
+
+if [[ $# -eq 0 ]]; then
+menu
+
+elif [[ $1 == "help" ]]; then
+help
+
+
+elif [[ $1 == "add" ]]; then
+add "$2"
+
+elif [[ $1 == "complete" ]]; then
+complete "$2"
+
+elif [[ $1 == "list"  ]] && [[ $# -eq 1 ]]; then
+list doMe_uncompleted
+
+elif [[ $1 == "list"  ]] && [[ $2 == "completed"  ]] && [[ $# -eq 2 ]]; then
+list doMe_completed
+
+else
+help
+
+fi
